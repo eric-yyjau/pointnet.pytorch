@@ -85,10 +85,11 @@ class STNkd(nn.Module):
         return x
 
 class PointNetfeat(nn.Module):
-    def __init__(self, global_feat = True, feature_transform = False):
+    def __init__(self, global_feat = True, pt_dim=3, feature_transform = False):
         super(PointNetfeat, self).__init__()
-        self.stn = STN3d()
-        self.conv1 = torch.nn.Conv1d(3, 64, 1)
+        # self.stn = STN3d()
+        self.stn = STNkd(k=pt_dim)
+        self.conv1 = torch.nn.Conv1d(pt_dim, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
         self.conv3 = torch.nn.Conv1d(128, 1024, 1)
         self.bn1 = nn.BatchNorm1d(64)
@@ -148,11 +149,11 @@ class PointNetCls(nn.Module):
 
 
 class PointNetDenseCls(nn.Module):
-    def __init__(self, k = 2, feature_transform=False):
+    def __init__(self, k = 2, pt_dim=3, feature_transform=False):
         super(PointNetDenseCls, self).__init__()
         self.k = k
         self.feature_transform=feature_transform
-        self.feat = PointNetfeat(global_feat=False, feature_transform=feature_transform)
+        self.feat = PointNetfeat(global_feat=False, pt_dim=pt_dim, feature_transform=feature_transform)
         self.conv1 = torch.nn.Conv1d(1088, 512, 1)
         self.conv2 = torch.nn.Conv1d(512, 256, 1)
         self.conv3 = torch.nn.Conv1d(256, 128, 1)
@@ -195,6 +196,12 @@ if __name__ == '__main__':
     out = trans(sim_data_64d)
     print('stn64d', out.size())
     print('loss', feature_transform_regularizer(out))
+
+    # n-dim pointNetDenseCls
+    seg = PointNetDenseCls(k = 3, pt_dim=64)
+    out, _, _ = seg(sim_data_64d)
+    print('n-dim seg', out.size())
+    ##
 
     pointfeat = PointNetfeat(global_feat=True)
     out, _, _ = pointfeat(sim_data)

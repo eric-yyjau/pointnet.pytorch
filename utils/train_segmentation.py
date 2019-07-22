@@ -64,6 +64,18 @@ try:
 except OSError:
     pass
 
+## set device
+device_name = "cpu"
+# os.environ["CUDA_VISIBLE_DEVICES"] = args["--devices"]
+if torch.cuda.is_available():
+    device_name = "cuda"
+    torch.backends.cudnn.deterministic = True
+    torch.cuda.manual_seed(0)
+    print("Let's use", torch.cuda.device_count(), "GPU(s)!")
+else:
+    print("CUDA is not available")
+device = torch.device(device_name)
+
 blue = lambda x: '\033[94m' + x + '\033[0m'
 
 classifier = PointNetDenseCls(k=num_classes, feature_transform=opt.feature_transform)
@@ -73,7 +85,7 @@ if opt.model != '':
 
 optimizer = optim.Adam(classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
-classifier.cuda()
+classifier.to(device)
 
 num_batch = len(dataset) / opt.batchSize
 
@@ -82,7 +94,7 @@ for epoch in range(opt.nepoch):
     for i, data in enumerate(dataloader, 0):
         points, target = data
         points = points.transpose(2, 1)
-        points, target = points.cuda(), target.cuda()
+        points, target = points.to(device), target.to(device)
         optimizer.zero_grad()
         classifier = classifier.train()
         pred, trans, trans_feat = classifier(points)
@@ -102,7 +114,7 @@ for epoch in range(opt.nepoch):
             j, data = next(enumerate(testdataloader, 0))
             points, target = data
             points = points.transpose(2, 1)
-            points, target = points.cuda(), target.cuda()
+            points, target = points.to(device), target.to(device)
             classifier = classifier.eval()
             pred, _, _ = classifier(points)
             pred = pred.view(-1, num_classes)
@@ -119,7 +131,7 @@ shape_ious = []
 for i,data in tqdm(enumerate(testdataloader, 0)):
     points, target = data
     points = points.transpose(2, 1)
-    points, target = points.cuda(), target.cuda()
+    points, target = points.to(device), target.to(device)
     classifier = classifier.eval()
     pred, _, _ = classifier(points)
     pred_choice = pred.data.max(2)[1]
